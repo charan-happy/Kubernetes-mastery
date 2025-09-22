@@ -67,3 +67,34 @@ variable "worker_count" {
 type = number
 default = 3
 }
+variable "aws_region" {
+description = "AWS region"
+type = string
+default = "ap-south-1"
+}
+
+
+variable "aws_access_key" {
+description = "AWS access key"
+type = string
+sensitive = true
+}
+
+
+variable "aws_secret_key" {
+description = "AWS secret key"
+type = string
+sensitive = true
+}
+
+
+variable "key_name" {
+description = "EC2 key pair name"
+type = string
+}
+
+
+variable "my_ip" {
+description = "Your public IP for SSH (e.g. 203.0.113.25/32)"
+type = string
+}
