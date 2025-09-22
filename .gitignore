@@ -1,0 +1,38 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+tfplan
+*.tfvars
+
+# AWS CLI
+.aws/
+
+# System
+*.log
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Python virtualenv
+venv/
+ENV/
+
+# OS generated files
+.idea/
+.vscode/
+
+# AWS CLI install artifacts
+awscliv2.zip
+aws/
+
+# Ignore sensitive files
+*.pem
+*.key
+*.crt
+
+# Misc
+__pycache__/
