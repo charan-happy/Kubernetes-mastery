@@ -1,4 +1,6 @@
 resource "aws_instance" "bastion" {
+depends_on = [aws_key_pair.k8s_key]
+
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.bastion_instance_type
   subnet_id                   = aws_subnet.public.id

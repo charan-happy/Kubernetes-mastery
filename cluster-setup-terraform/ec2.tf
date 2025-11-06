@@ -5,7 +5,7 @@
 # ---------------------------
 resource "aws_key_pair" "k8s_key" {
   key_name   = var.key_name
-  public_key = file("~/.ssh/${var.key_name}")
+  public_key = file("~/.ssh/${var.key_name}.pub")
 }
 
 # ---------------------------
@@ -17,6 +17,8 @@ resource "aws_key_pair" "k8s_key" {
 # Control Plane Nodes (private controlplane subnet)
 # ---------------------------
 resource "aws_instance" "control_plane" {
+depends_on = [aws_key_pair.k8s_key]
+  
   count                  = var.controlplane_count
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.controlplane_instance_type
