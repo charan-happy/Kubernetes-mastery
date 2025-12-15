@@ -164,11 +164,78 @@ Data sharing between containers using a shared volume within a pod
 <details><summary>41. How does the VPA help to optimize resources in kubernetes?</summary>VPA Automatically adjusts CPU and Memory requests and limits for pods based on their actual usage, helping avoid both over-provisioning and underutilization </details>
 ![alt text](image-8.png)
 <details><summary>42. What are the some of the best practices for VPA and HPA ?</summary>1. Configure Probes(liveness, rediness) and control resource requests and limits (HPA and VPA): HPA relies on these probes to make accurate scaling decisions.Have explicit resource requests and limits set for your containers. This helps HPA make informed scaling decesions based on accurate resources. For the VPA, it gives you more understanding of everything the VPA can do with your workloads.<br> 2. Define meaningful metrics and realistic scaling threasholds (HPA) <br> 3. Gradual implementation and testing in non-production environments (HPA and VPA) <br>4. Monitor and tweak (HPA and VPA) <br>4. Adopt HPA and VPA in the same cluster for different workloads </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
 
 ## 6. Autoscaling in Action
+<details><summary>43. what is cluster autoscaler ?</summary>Cluster Autoscaler (CA) is a tool that automatically resizes your cluster to match workload demand. The CA's job is to make sure every pod has a place to run, which cuts waste and optimizes costs.</details>
+<details><summary>44. My cluster's CPU usage is at 95%, but the cluster autoscaler hasn't added any new nodes, is this expected behaviour ?</summary>yes, this is entirely expected behaviour. The cluster Autoscaler's trigger is not high resource utilization such as CPU or memory. it only acts when the kubernetes scheduler cannot place a pod due to insuffcient resources, resulting in a `pending` pod. As long as all existing pods are running - no matter how high their resources usage-the cluster autoscaler will remain idle. A scale-up will only occur when a new pod arrives that cannot be scheduled. </details>
+![alt text](image-9.png)
+<details><summary>45. walk me through how you'd enable node autoscaling in EKS ?</summary>As a foundation and guardtrails : Define our EKS cluster configuration, including the essential tags the CA needs for auto-discovery and the minimum/maximum size to prevent unexpected costs or outages., Establishing trust (IRSA): Enable the OIDC provider for our cluster in AWS IAM, creating the foundation for secure communication between our cluster and the AWS APIs, Principle of least privileges: craft a fine-grained IAM policy that grants the CA only the permissions it needs, strictly scoped to the resources it's supposed to manage. Creating the Identity: Generate the specififc IAM role and Kubernetes ServiceAccount, linking them together through the power of IRSA Deployment: Install the CA using its official HELM chart, configuring it to use our IRSA setup and setting safe, production-sensible arguments </details>
+![alt text](image-10.png)
+<details><summary>46. How does the cluster autoscaler discover which AWS Auto scaling groups it is allowed to manage ?</summary>The cluster autoscaler discovers manageable auto scaling groups(ASGs) using a specific set of AWS tags. These tags must be applied directly to the ASG, not just the instances, and their presence is non-negotiable for discovery. There are two mandatory tags: `k8s.io/cluster-autoscaler/enabled` must be set to "true" This signals "This autoscaling group is available for management" and `k8s.io/cluster-autoscaler/<cluster-name>` must be set to "owned" to associate the group with a specific cluster, preventing a single cluster autoscaler from trying to manage nodes belonging to another cluster.
+```yaml
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+name: ${CLUSTER_NAME}
+region: ${AWS_REGION}
+version: "${EKS_LATEST_VERSION}"
+managedNodeGroups:
+- name: managed-ng-1
+minSize: 1
+desiredCapacity: 1
+maxSize: 5
+instanceType: t3.medium
+volumeSize: 20
+labels: { role: worker }
+# Required tags for Cluster Autoscaler autodiscovery
+tags:
+k8s.io/cluster-autoscaler/enabled: "true"
+k8s.io/cluster-autoscaler/${CLUSTER_NAME}: "owned"
+```
+</details>
+<details><summary>47. You've deployed the cluster autoscaler, but your nodes aren't scaling up when pods are pending. You suspect it's a discovery issue. How would you troubleshoot this?</summary>My first step would be to verify the AWS tags on the ASG for my managed node group. I'd go to the EC2 console, find the ASG, and check its tags tab. I would confirm that the two required tags, `k8s.io/cluster-autoscaler/enabled` and `k8s.io/cluster-autoscaler/my-cluster-name`, are present and correctly spelled. If they're missing, the CA won't see the ASG and will never attempt to scale it. I would also check the CA pod logs for messages indicating it can't find any node groups to manage. </details>
+<details><summary>48. To modify ASGs, the CA Pod needs AWS credentials, what is the most recommended method for granting these permissions ? </summary>The Short answer is IRSA, IRSA links a kubernetes service account to an AWS IAM role. This allows any pod using that service account to inherit the role's permissions without needing static secret keys. </details>
+<details><summary>49. You're installing the cluster Autoscaler Helm chart on a cluster with IRSA already configured. Which two `rbac.serviceAccount` values are the most important to set, and why ?</summary>The two most critical values are `--set rbac.serviceAccount.create=false" and `--set rbac.serviceAccount.name=cluster-autoscaler`This is because i already created a Service account and linked to a specific IAM role via IRSA. I need to instruct Helm to use my existing, pre-configured ServiceAccount. If i let HELM create a new one, it won't have the necessary `eks.amazonaws.com/role-arn` annotation and the pod will fail with AccessDenied errors because it won't have any permissions to interact with AWS ASGs. </details>
+<details><summary>50. Imagine a situation you deployed CA, but it is not scaling. what are the first three things you check?  </summary>1. Scale-up isn't happening despite pending pods. This is often an issue with discovery. The CA simply can't find the ASG it's supposed to manage. 
+```
+The link between CA and ASG is a set of specific tags. You need to confirm they are correctly applied to ASG itself, not just the instances.
 
+1. Navigate to the EC2 console in AWS
+2. Under Autoscaling, select Auto Scaling Groups
+3. Find the ASG corresponding to your EKS node group
+4. Select it and go to the tags tab
+5. Confirm these two tags exist and are spelled correctly.
+`
+k8s.io/cluster-autoscaler/enabled with a value of true.
+k8s.io/cluster-autoscaler/interview-charan-ca-cluster (or your cluster’s name) with a value of owned.
+`
+If these tags are missing or incorrect, the CA will ignore the node group completely.
+
+2. The CA pod is crash-looping or its logs show AccessDenied Errors.
+
+This is almost always an IRSA permission problem. The pod is trying to call AWS APIs (such as DescribeAutoScalingGroups) but being told it doesn't have the authority
+```verification: The magic link in the IRSA chain is the annotation on the kubernetes `serviceaccount` this annotation tells the EKS control plane to swap the Pod's default token for temporary IAM credentials.
+
+--> Run this command to inspect the service account:
+`kubectl -n kube-system get sa cluster-autoscaler -o yaml`
+--> you must see an annotation that looks like this: `eks.amazonaws.com/role-arn: arn:aws:iam::...` if that annotation is missing, it means you either forgot to create IRSA mapping or, more likely, you let the HELM chart create a new un-annotated ServiceAccount instead of using the one you prepared
+
+3. scale-up works but scale-down never happens
+--> This is the more subtle issue, as the autoscaler might be intentionally blocked from removing a node.
+
+```
+Verification: CA won't remove a node if it can't safely evict all the pods. Check for these common blockers:
+
+    --> minSize constraint: First, check the obvious: is minSize of your ASG set to a value that prevents further scale-down?
+    --> PodDisruptionBudget (PDBs): A PDB can prevent the autoscaler from evicting a pod if it would violate the budget (Ex: always keep at least 3 replicas of this app running") this is a legitimate safely feature, but it can pin a node.
+    --> "unsafe to evict " pods: The autoscaler respects certain pods that it considers unsafe to evict. This includes pods with local storage (emptyDir doesn't count) or any pod with the annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`.you can check for this by describing the pods on the underutilized node.
+```
+Tip: Avoid Autoscaler turf wars
+
+Here's a critical operational Rule: Never run two different node autoscalers(ex: Cluster Autoscaler and karpenter) managing the same set of nodes. They will fight for control over the same resources. leading to unpredictable and chaotic scaling behaviour where one system adds a node and the other immediately tries to remove it.
+``</details>
+
+<details><summary> 51. is there any CA limitations ?</summary>yes, we do have some limitation w.r.to CA, Limited on-premise support, Scaling delays, performance at scale, Disruption tolerance assumption, resource-based, not utilization-based scaling,challenges with node constraints  </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
