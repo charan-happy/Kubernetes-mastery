@@ -236,15 +236,48 @@ Here's a critical operational Rule: Never run two different node autoscalers(ex:
 ``</details>
 
 <details><summary> 51. is there any CA limitations ?</summary>yes, we do have some limitation w.r.to CA, Limited on-premise support, Scaling delays, performance at scale, Disruption tolerance assumption, resource-based, not utilization-based scaling,challenges with node constraints  </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
+<details><summary>52. How does karpenter's method of provisioning nodes fundamentally differ from the Cluster Autoscaler's cand what key advantage does this provide ? </summary>The cluster Autoscaler (CA) works directly by managing pre-defined ASGs. It tells the ASG to scale up or down and the ASG handles the interaction with EC2. In contrast, Karpenter works directly with EC2 fleet API without needing ASGs. This direct approach is a major advantage because it allows karpenter to provision the most optimal and cost-effective instance type based on the exact needs of pending pods, rather than being limited to the instance types defined in a node group </details>![alt text](image-11.png)
+![alt text](image-12.png)
+<details><summary>53. What is a NodePool in karpenter, and what are two key constraints you can define within it to control which nodes get provisioned ?</summary>
+A nodepool is a karpenter resource that defines how it should manage unschedulable pods and provision nodes. It sets the rules and characteristics for the nodes karpenter creates. Two key constraints you can define are as follows:
+    - Instance types: You can specify a list of allowed instance types or families (e.g.. only t3 or m5 instances)
+    - Zones: you can restrict node provisioning to specific availability zones, which is critical for applications that rely on persistent volumes or have other zone-specific dependencies
+![alt text](image-13.png) </details>
+<details><summary>54. How would you use a karpenter Nodepool to ensure that only specific, high-priority pods can run on newly provisioned nodes?</summary>I would use taints within the 'NodePool' configuration. By applying a specific taint to the 'Nodepool'- for example, 'priority-workload-only=true:NoSchedule"-any node that karpenter creates from that pool will be marked with this taint. This prevents normal pods from being scheduled on it. To complete the setup, I would ensure my high-priority application's pods have the corresponding toleration, which would allow them to be scheduled on these reserved, newly created nodes. This is an effective strategy to dedicate capacity for specific workloads. In scenarios where a pod qualifies for multiple NodePools, karpenter selects the NodePool with the highest assigned weight for provisioning. </details>
+<details><summary>55. Within the nodepool, how would you fine-tune the behavior of the kubelet ?</summary>A common scenario for kubelet customization is managing the maximum number of pods per node. Here's how you can manage this: 
+
+- Dynamic Kubelet configuration: you can adjust kubelet settings dynamically based on your cluster's characteristics. For instance, if you're operating within a cloud environment where there are IP address limitations per node, you can configure kubelet to limit the number of pods relative to the amount of available CPU resources to prevent node saturation.
+
+- Static Pod limit: Alternatively, you can set a static upper limit on the number of pods per node. This method is straightforward and ensures you don't exceed the count, avoiding issues such as IP address shortages, which can prevent Pod deployment </details>
+<details><summary>56. What are disruption settings in karpenter? </summary>Disruption settings in karpenter are designed to manage and minimize the impact of workloads during node consolidation and scaling. These settings ensure that critical applications stay available and stable while karpenter optimizes resource usage. </details>
+<details><summary>56. Explain karpenter's consolidation feature. What is its main purpose and what are the two modes it can operate in ?</summary>Consolidation is a feature in karpenter that actively works to reduce cluster costs by optimizing resource utilization. Its main purpose is to identify underutilized nodes and replace them with cheaper alternatives or terminate them if the workloads can fit elsewhere. The two primary operating modes are as follows:
+    - WhenUnderutilized: This mode flags nodes for potential consolidation when they are running at low capacity.
+
+    - whenEmpty: This mode targets nodes that are not hosting any workload pods, making consolidation decisions much simpler
+
+Below are few strategies for node consolidation:
+
+- Deletion and replacement: Nodes may be marked for deletion if Karpenter determines their workloads can be accomdated by the spare capacity on other nodes. Alternatively, nodes might be replaced with more cost-efficient ones if the combined capacity of other nodes and a new, less expensive node can support the existing workloads.
+
+- Heuristics for multi-node consolidation: Given the complexity of multi-node consolidation, karpenter employs heuristic methods [algorithms used in cloud computing and data centers to optimize resource utilization and reduce costs by migrating workloads from multiple underutilized physical machines (nodes) onto fewer, more efficiently packed machines] to identify likely candidates for consolidation rather than attempting to evaluate all possible combinations. 
+
+- Consolidation preferences: when considering multiple nodes for consolidation, karpenter aims to minimize workload disruption by prioritizing the removal of nodes that have fewer Pods, are nearing the end of their lifespan, or are running lower-priority workloads.
+
+- By implementing these strategies, Karpenter ensures that node consolidation is performed efficiently and with minimal disruption to your workloads
+         </details>
+<details><summary>57. How karpenter handles budgets ? </summary>Here's breakdown of how karpenter handles budgets:
+
+- Budget calculations: If Nodepool's disruption budget is based on percentage, karpenter rounds up the product of the total node count and the percentage to get the number of nodes that can be disrupted . It then subtracts the number of nodes already being deleted and those marked as 'NotReady'.
+
+- Non-Percentage Budgets: When a budget is fixed number instead of a percentage, the calculation is straightforward: karpenter subtracts the number from the total node count, accounting for nodes that are being deleted and those in a NotReady state.
+
+- Minimum values for multiple budgets: For NodePools with several budgets, karpenter applies the most restrictive (or the minimum) value among them. </details>
+<details><summary>58. How can you use karpenter to ensure nodes are regularly recycled, and why is this a good practice ? </summary>You can use the 'expireAfter' setting within a NodePool's disruption configuration. By setting a duration, such as '720h' for 30 days, you instruct karpenter to automatically drain and terminate nodes after they reach that age. This is valuable best practice for maintaining cluster health and security. Regularly recycling nodes helps to apply the latest security patches from a new AMI, reduces configuration drift, and prevents potential issues that can arise on long-running nodes. </details>
 
 ## 7. Networking, Services and Security
 
+<details><summary> </summary> </details>
+<details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
