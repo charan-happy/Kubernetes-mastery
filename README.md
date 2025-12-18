@@ -276,11 +276,14 @@ Below are few strategies for node consolidation:
 
 ## 7. Networking, Services and Security
 
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
+<details><summary>59. What are all the different components of the kubernetes networking ? </summary> 
+1. Pod Communication <br> 2. Services and ingress <br> 3. Network policies <br> 4. kube-proxy <br> 5. Domain name system (DNS) <br> 6. CNI Plugins</details>
+<details><summary>60. How do pods communicate in kubernetes ?</summary>The pods communication can be split into multiple types of scenarios...." 1. How Do containers within one pod communicate ?<br> 2. How do pods on the same node communicate ? <br>3. How do pods on different nodes communicate ?</details>
+<details><summary>61. How do the containers within one pod communicate ? </summary>Containers within the same pod in kubernetes can communicate with each other using local host network interface. When multiple containers are part of a single pod, they share the same network namespace. This means they can reach each other using loopback address (127.0.0.0) and communicate over the localhost network. Essentially, it's as if all the containers within a pod are running on the same host, enabling them to interact seamlessly without external networking. This local communication within the pod is fast and efficient and doesn't involve the complexities of external network routing </details>
+![alt text](image-14.png)
+<details><summary>62. How do pods on the same node communicate ?</summary> Pods on the same node in kubernetes can communicate with each other directly over the host machine's network. Each pod on a node is assigned a unique IP address within the node's network space. Containers within these pods can use this Ip address to communicate. when containers in one pod want to communicate with containers in another pod on the same node, they can use the destination pod's IP address directly. This communication occurs without external routng since the pods are co-located on the same machine. </details>![alt text](image-15.png)
+<details><summary>63. How do pods on different nodes communicate ? </summary> Pods on different nodes in kubernetes communicate with each other over the cluster network. When pods are spread across multiple nodes, inter-node communication becomes essential. Kubernetes facilitates this communication through various networking components. </details>
+
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
