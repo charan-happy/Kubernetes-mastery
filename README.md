@@ -284,21 +284,140 @@ Below are few strategies for node consolidation:
 <details><summary>62. How do pods on the same node communicate ?</summary> Pods on the same node in kubernetes can communicate with each other directly over the host machine's network. Each pod on a node is assigned a unique IP address within the node's network space. Containers within these pods can use this Ip address to communicate. when containers in one pod want to communicate with containers in another pod on the same node, they can use the destination pod's IP address directly. This communication occurs without external routng since the pods are co-located on the same machine. </details>![alt text](image-15.png)
 <details><summary>63. How do pods on different nodes communicate ? </summary> Pods on different nodes in kubernetes communicate with each other over the cluster network. When pods are spread across multiple nodes, inter-node communication becomes essential. Kubernetes facilitates this communication through various networking components. </details>
 
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
+<details><summary>64. how does DNS work inside a kubernetes cluster ?</summary>kubernetes uses a built-in DNS service (usually CoreDNS) to resolve internal service names and Pod hostnames. Every service gets a DNS entry such as `service-name.namespace.svc.cluster.local` allowing pods to discover and communicate with each other by name. </details>
+<details><summary>65. what is the role of the kube-dns or CoreDNS service in kubernetes networking ?</summary>Both kube-dns and CoreDNS are DNS servers used in kubernetes to facilitate service discovery and DNS resolution within the cluster.
+
+**kube-dns** was the original DNS server used in kubernetes for service discovery. it consists of containers running on the kuberetes cluster, including a DNS server (SKYDNS) and a service discovery component. Kube-dns automatically creates DNS records for each service and pod in the cluster, allowing for accessible DNS-based communication.
+
+**CoreDNS** is a more flexible and extensible DNS server that gradually replaced kube-dns as the default DNS server starting from kubernetes version 1.11. But even today, companies sometimes prefer kube-dns in modern kubernetes installations primarily because of some legacy reasons. CoreDNS is a general-purpose DNS server that supports various plugins, providing features beyond essential DNS resolution. It is highly configurable, allowing administrators to customize DNS behaviour based on their cluster requirements.
+
+Mainly, these are responsible for Service Discovery, DNS resolution, Cluster domain
+ </details>
+<details><summary>66. what is container network interface ?, why is it important in kubernetes ?</summary>
+CNI is a specification and set of libraries that define how network connectivity is provided to containers. Kubernetes uses CNI plugins to manage Pod networking, regardless of the container runtime in use—such as containerd, cri-o, or Docker
+
+- Kubernetes uses CNI as its networking interface for managing container networking. CNI plugins are employed to set up networking for Pods, facilitating communication within the cluster. CNI provides a standardized way for different container runtimes to use various networking plugins seamlessly, allowing containers to communicate with each other and the broader network.
+
+CNI plugins themselves are executable files that implement the CNI specification. These plugins handle tasks such as setting up network interfaces, configuring routes, and managing container networking namespaces. Container runtimes interact with CNI plugins during the container creation process. When a container starts, the runtime calls the appropriate CNI plugin to configure the network.
+
+ ![alt text](image-16.png)</details>
+
+<details><summary>67. what are the functions provided by CNI ?</summary> CNI is responsible for setting up and managing container networking in Kubernetes. It configures IP addresses, routes, and DNS so that containers can communicate with each other and with external networks.
+
+Each Kubernetes Pod is given its own network namespace, ensuring network isolation and preventing interference between containers running on the same host.
+
+CNI supports multiple networking models, including bridge-based networking for communication within a node, overlay networks for secure cross-node communication, and host networking, where containers use the host’s network stack directly.
+
+It handles IP address management (IPAM) by dynamically assigning and releasing IPs, ensuring every container has a unique and reachable address.
+
+CNI is plugin-based and extensible, allowing administrators to dynamically load, replace, or extend networking plugins without modifying the container runtime or CNI core. This flexibility enables support for different networking solutions and policies.
+
+CNI provides a common networking abstraction that works across multiple container runtimes such as Docker and containerd, while integrated plugins enable advanced features like traffic control and network policy enforcement.</details>
+<details><summary>68. what is container overlay network ?</summary>A container overlay network enables seamless communication between containers running on different hosts within a cluster. It creates a virtual network abstraction that spans all nodes, allowing containers to communicate using virtual IP addresses, independent of the underlying physical infrastructure.
+
+Overlay networks rely on encapsulation and tunneling (such as VXLAN or GRE) to transmit container traffic across the physical network. They are highly scalable and dynamic, automatically adapting as containers are added or removed—making them ideal for elastic, distributed applications.
+
+Common CNI solutions that provide overlay networking include Flannel, Calico, and Weave, each implementing different overlay strategies. </details>
+
+<details><summary>69. what CNI implementation do you know ?</summary>calico is a versatile CNI plugin known for its scalability and support for various networking topologies. It leverages BGP routing for efficient communication and provides network policies for security 
+
+- Flannel is a straightforward and lightweight CNI solution commonly used in kubernetes clusters. It utilizes overlay networking, often employing VXLAN, for connecting containers across different nodes.
+
+- Weave offers a simple easy-to-use solution for container networking. It provides network segmentation and encryption and can be seamlessly integrated into various container orchestration platforms.
+
+- Cillium stands out for its focus on providing secure networking and API-aware network visibility. It incorporates load balancing, network security, and even HTTP-aware network policies
+
+- canal is a networking solution that combines the best features of Flannel and Calico. It provides uses with a unified networking solution that includes Calico's network policy enforcement capabilities and the rich connectivity captions offered by both calico (unencapsulated) and flannel (encapsulated) networks
+
+- AWS VPC CNI is a specific CNI plugin designed for kubernetes clusters running on Amazon Web Services (AWS), also known as Elastic Kubernetes Service (EKS). It is tailored to leverage the networking capabilities of AWS Virtual Private Clouds (VPCs) to provide efficient and secure communication between containers.
+
+- Other cloud providers (such as Azure) also provide solutions for CNI functionality for their managed Kubernetes services, but they are less frequently encountered.
+</details>
+<details><summary>70. What factors will you consider while choosing CNI plugin for production ?</summary>Scalability: Ensure the plugin can handle the scale of your production environment
+
+Security: Evaluates the security features, such as network policies and encryption, provided by the CNI plugin
+
+Ease of use: Consider the ease of deployment, configuration, and maintainance, especially if you prefer simplicity.
+
+Community support: A vibrant and active community often indicates ongoing development, support, and shared knowledge </details>
+
+|CNI|Pros|Cons|Best fit for...|
+|---|---|---|---|
+|Caclico|Known for scalability, security, and support for various network topologies. Utilizes Border Gateway Protocol (BGP) for efficient routing. Offers rich network policies for enhanced security.|It may have a steeper learning curve for beginners|In environments that require high availability and scalability, Calico’s rich feature set makes it an excellent choice for large clusters where maintaining performance at scale is critical.|
+|Flannel|Lightweight and easy to set up. Suitable for simpler deployments. Utilizes overlay networking, often using VXLAN.|Best suited for smaller-scale or less complex scenarios.|An excellent choice for simplified Kubernetes networking requirements where ease of use is paramount. Its compatibility with various backends makes it adaptable to different environments. It also has the highest network bandwidth performance.|
+|Cilium|Focuses on secure networking and API-aware visibility. Offers features such as load balancing, network security, and HTTP-aware network policies.|Advanced features may only be necessary for some use cases|In high-security and scalable environments, application protocols are crucial for securing modern microservice architectures where traditional network-layer controls are insufficient.|
+
+<details><summary> 71. what exactly makes cilium so different in comparision to other solutions ?</summary>While other CNI solutions use the Linux iptables networking solution and a firewall, ePBF is a highly efficient and programmable framework in the Linux kernel that allows for dynamic and customizable packet processing without kernel modifications, which slightly improves the network performance for high-loaded systems.
+
+cilium, using eBPF, has the following features and advantages:
+
+```
+Cilium is a Kubernetes networking and security solution built on eBPF that provides API-aware, Layer 7 network security for microservices.
+
+It enforces fine-grained security policies at the network, transport, and application (HTTP/API) layers, allowing precise control over how services communicate. Cilium also includes built-in load balancing to distribute traffic across service instances, improving availability and performance.
+
+To secure communication, Cilium supports transparent encryption for inter-Pod traffic. It offers distributed Layer 7 visibility, giving deep insights into microservice communication patterns across the cluster.
+
+Cilium integrates smoothly with service mesh architectures (such as Istio), enhancing observability, security, and traffic control, and it generates dynamic, API-aware network graphs that visually map service interactions and dependencies.
+```
+ </details>
+
+![alt text](image-17.png)
+
+<details><summary>72. what is the kube-proxy component ?</summary>
+kube-proxy is a critical component in kubernetes cluster, responsible for managing network connectivity to and from pods. It operates at the network layer (layer 4) and perform essential functions to enable communication between pods within cluster and between external clients and services
+ </details>
+<details><summary>73. What is kube-proxy strictly responsible for ?</summary>kube-proxy primarily provides a service abstraction within the kubernetes cluster. Services in kubernetes define sets of pods and a policy by which to access them (services abstraction). Also it's responsible for the following :
+
+```
+kube-proxy is a core Kubernetes component that implements Service networking and load balancing inside the cluster.
+
+It supports multiple Service types, including ClusterIP (internal access), NodePort (exposes services on each node’s IP and port), LoadBalancer (external access via cloud provider load balancers), and ExternalName (DNS-based service mapping).
+
+To route traffic, kube-proxy relies on the node’s networking stack, using iptables or IPVS to create forwarding and load-balancing rules. It continuously tracks Service-to-Pod (endpoint) mappings and dynamically updates rules as Pods scale, restart, or move.
+
+kube-proxy provides basic load balancing, distributing traffic across healthy Pod replicas, supports session affinity (sticky sessions) for stateful workloads, and ensures NodePort services are reachable from external clients.
+
+It can run in different proxy modes—userspace (legacy), iptables, or IPVS—depending on cluster configuration and infrastructure, helping ensure reliable and consistent Service connectivity across the cluster.
+```
+ </details>
 
 ## 8. Essentials of kubernetes networking
 
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
 
 ## 9. Kubernetes Network Architecture: Services and ingresses
 
+<details><summary>74. what are the kubernetes services?</summary>
+Kubernetes services is essential for facilitating communication between various parts of applications running within a kubernetes cluster. They provide stable endpoint by abstracting away the details of individual pods and enabling dynamic loadbalancing and service discovery. Kubernetes services ensures the application remains accessible and functional even as pods are added, removed or replaced </details>
+
+<details><summary>75. Explain different service types in kubernetes? </summary>
+**clusterIP** : This is the default type of service. It exposes the service on an internal IP within the cluster and is accessible only within the kubernetes cluster. Another kind of sub-service is called a headless Service. It is a special kind of service where no ClusterIP is assigned. Instead of providing a single stable IP and load balancing across pods, a headless service directly returns the IP addresses of the associated pods. This allows clients to connect directly to individual pods, which is particularly useful for scenarios such as StatefulSets or when applications need to handle their own load balancing.
+
+- **NodePort** : This service exposes the service to each ode’s IP address at a static port. It allows external traffic to reach the Service outside the cluster using the node’s IP address and the allocated port.
+
+- **LoadBalancer** : This Service type exposes the Service externally using a cloud provider’s load balancer. The cloud provider assigns a unique external IP address to the Service, allowing it to be accessed from outside the cluster.
+
+- **ExternalName** : This type of Service maps the Service to the contents of the externalName field. It allows access to external services by returning a CNAME record with the configured value.
+
+kubernetes services operate based on labels and selectors. Services select pods based on their labels, enabling dynamic scaling and reconfiguration without disrupting service availability. 
+</details>
+<details><summary>76. What is ClusterIP service in Kubernetes and when should you use it? </summary>
+The `clusterIP` service exposes an application on an internal IP, making it reachable only within the kubernetes cluster. It is typically used for internal service-to-service communication, improving reliability and security by isolating access from the outside world. 
+ </details>
+ ![alt text](image-18.png)
+
+<details><summary>77. What is the NodePort Service Type ?</summary>The NodePort service type in kubernetes exposes a service on a specific port all nodes (VMS or Physical Machines) in the cluster. This means the service is accessible from outside the cluster using each node's IP address and the NodePort allocated </details>
+<details><summary>78. why is using NodePort services in production environments generally discouraged ?</summary>NodePort services exposes a known range of ports (30000 - 32767) on all nodes, which can increase security risks by making services easier to discover and attack during port scanning. </details>
+![alt text](image-19.png)
+<details><summary>79. What is LoadBalancer service type ? </summary>The `loadbalancer` service type in kubernetes provisions an external loadbalancer from a cloud provider and assigns it a unique external IP address. This allows external clients to access the service via loadbalancer, distributing traffic across multiple pods serving the service within the cluster. The `loadbalancer` service type is widely used in production kubernetes environments, particularly in cloud-based deployment where cloud providers offer managed load balancer services. While it may incur additional costs due to the provisioning of external loadbalancers, the benefits of high availability, scalability, and ease of integration make loadabalancer services a popular choice for exposing services externally in kubernetes clusters. </details>
+<details><summary>80. Loadbalancer service type usecase scenarios ?</summary>High availability and fault tolerance, external access to services, public facing applications, Elastic scaling, integration with external systems </details>
+![alt text](image-20.png)
+<details><summary>81. What is the ExternalName Service type and when would you use it ?</summary>The externalName service maps a kubernetes service to an external DNS name, allowing pods to access external services as if they were part of the cluster, without managing IPs or complex network settings. </details>
+![alt text](image-21.png)
+<details><summary> </summary> </details>
+<details><summary> </summary> </details>
+<details><summary> </summary> </details>
+<details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
