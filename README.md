@@ -414,9 +414,18 @@ The `clusterIP` service exposes an application on an internal IP, making it reac
 ![alt text](image-20.png)
 <details><summary>81. What is the ExternalName Service type and when would you use it ?</summary>The externalName service maps a kubernetes service to an external DNS name, allowing pods to access external services as if they were part of the cluster, without managing IPs or complex network settings. </details>
 ![alt text](image-21.png)
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
+<details><summary>82. How exactly do kubernetes services interact with pods ? </summary> Kubernetes services facilitates traffic forwarding to pods using label selectors and IP table rules managed by `kube-proxy`. When a service is created, a clusterIP (for clusterIP services), a NodePort (for NodePort service) or externalIP (for loadbalancer services) is assigned. <br>
+pods within the cluster discover and communicate with services using DNS-based service discovery. Each service is assigned a DNS record that pods can access. `kube-proxy` intercepts traffic sent to the service's cluster IP and applies IP table rules to route it to the appropriate pods based on the service's selector criteria <br>
+For services with multiple pods, `kube-proxy` implements load-balancing strategies to distribute traffic among them. `nodeport` and `loadbalancer` services involve additional IP table rules to forward traffic from the specified port to the `cluster IP service` and then to the relevant pods
+</details>
+<details><summary>83. What are all the main loadbalancing strategies `kube-proxy` uses ? </summary>
+1. Roundrobin : This is the default and most common strategy. `kube-proxy` cycles through the list of available pod endpoints one by one, sending each new connection to the next pod in the list. It's simple and works well for most typical workloads. <br> 
+2. Random selection : when depending on the version and configuration, `kube-proxy` may also randomly select on endpoint from the available ones, which can help avoid predictable traffic patterns <br>
+3. session affinity (optional) : This can be also configured with `sessionAffinity: ClientIP, kube-proxy` can ensure that requests from the same client IP are consistently sent to the same pod. This is useful when the application needs session persistence (sticky sessions)
+</details>
+<details><summary>84. How do Ingress controllers work in kubernetes ? </summary>
+
+</details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
 <details><summary> </summary> </details>
@@ -544,10 +553,61 @@ The `clusterIP` service exposes an application on an internal IP, making it reac
 
 ## 23. Interview stories from authors
 
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
-<details><summary> </summary> </details>
+<details><summary>1. How would you fit the entire internet into a single kubernetes namespace ?</summary> 
+1. clarity the question first: 
+    ```
+    Are we discussing the internet's data, services or infrastructure ? <br>
+    Is the focus on scaling limitations, namespace design or kubernetes resources ?
+    ```
+<br>
+2. Breakdown the problem:
+    ```
+    - "kubernetes namespaces are used to partition resources within a cluster logically. Each namespace can host multiple services, deployments, and pods, but they have limites based on the cluster's overall capacity" <br>
+    - Discuss limits such as memory, cpu and the number of pods a single namespace can manage effectively <br>
+    then relate this to k8s scalability concepts :
+```
+- Explain that "while namespaces provide isolation within a kubernetes cluster, kubernetes itself imposes scaling limits <br>
+- detail how rather than fitting everything into one namespace, "the internet's services would likely be distributed across multiple namespaces in a kubernetes cluster for better management and resource allocation
+```
+<br>
+3. wrap up with scalability and microservices: End up with a discussion on how real-world scalable systems work. You could say something like "In practice, even kubernetes operates within physical limits. To scale a system such as internet, you would likely rely on multiple clusters, distributed systems, and a microservices architecture.
+    
+</details>
+<details><summary>2. What would happen if you created an infinite number of pods in kubernetes ?</summary> 
+1. Acknowledge the hypothetical nature of the question and say something like this :
+    ```
+    - creating an infinite number of pods isn't feasible due to the physical constraints of cluster's resources, such as memory, CPU and node availability <br>
+    - clarity that "kubernetes relies on the availability of resources to schedule and run pods, and every pod consumes some of these resources"
+    ```
+
+2. Explain resource quotas and limits, and dive into how kubernetes controls resource consumption
+   ```
+   - In practice, kubernetes prevents resource exhaustion through quotas and limits. These limits define the maximum number of resources (e.g; cpu or memory) allocated to a namespace or a pod
+
+   - Explain how, if a pod creation request exceeds the available resources, the kubernetes scheduler cannot place the pod on a node, resulting in the pod staying in a pending state
+   ```
+   3. Introduce cluster autoscaling. Talk about scaling and how kubernetes handles increasing workloads :
+      ```
+      - To manage growing workloads, kubernetes uses the HPA, which scales pods based on CPU/memory usage or custom metrics <br>
+      - Remember to clarify that even with autoscaling, there are still limits" The cluster autoscaler can add nodes to a cluster, but only upto the limit of the available infrastructure
+      ```
+      4. Highlight scheduler behaviour. Explain what happens when the scheduler is overwhelming. "if you continuously attempt to create pods beyond resource limits. kubernetes may leave them in pending state. the k8s scheduler will continuously try to allocate them, but will be constrained by available resources.
+</details>
+<details><summary>3. what's wrong with this Dockerfile ?</summary>
+1. start by reviewing the Dockerfile: explain that Even if there are no errors, dockerfile can often be optimized for performance and security. Then, take time to review the file for areas of improvement, such as reducing image size, security vulnerabilities, and efficiency <br>
+2. Multi-stage builds: One potential improvement could be to "consider using multi-stage builds to reduce the final image size. This allows you to include only the necessary binaries in the final image while removing build-time dependencies" <br>
+3. Highlight the importance of minimizing layers: "each instruction in a dockerfile creates a new layer. By combining commands, reducing the number of layers can make the image smaller and more efficient <br>
+4. You might also mention the caching mechanism of containers: "optimize the order of instructions to use Docker's build cache. For ex, placing instructions less likely to change (e.g; RUN apt-get update) earlier in the file allows Docker to cache these layers and avoid rebuilding them everytime" <br>
+5. Security best practices: "It's important to avoid running containers as root, A better practice would be to add a non-root user to the Dockerfile to run the application” and to “Regularly update base images and use minimal base images such as Alpine or distroless/scratch-based images to reduce the attack surface"
+</details>
+<details><summary>4. Your kubernetes pod keeps getting evicted. what do yu do ?</summary>
+1. check resource pressure :
+<br>
+2. Check pod resource requests and limits :
+<br>
+3. Discuss common node conditions that lead to evictions : <br>
+4. Node autoscaler and quotas <br>
+5. Finish by summarizing : Pod evictions are often tied to resource management issues within the cluster. You can prevent frequent evictions by understanding node pressure and adjusting Pod resource settings
+</details>
+
 
